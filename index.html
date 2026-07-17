@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>🔔 impotant question</title>
+<title>🔔 important question 🔔</title>
 <style>
   :root{
     --plum: #3a1f33;
@@ -493,7 +493,7 @@
   const customInput = document.getElementById('customInput');
   const customConfirm = document.getElementById('customConfirm');
   const bookTime = document.getElementById('bookTime');
-  const skipBooking = document.getElementById('skipBooking');
+// const skipBooking = document.getElementById('skipBooking'); //
   const finalMsg = document.getElementById('finalMsg');
   const finalTitle = document.getElementById('finalTitle');
   const finalSub = document.getElementById('finalSub');
@@ -741,9 +741,10 @@
     initBookingWidget(bookingLabel);
   }
 
-  skipBooking.addEventListener('click', () => {
-    showFinal(cravingChoice, null, null);
-  });
+  /*skipBooking.addEventListener('click', () => {
+    showFinal(cravingChoice, null, null); 
+  }); */
+
 
   // --- Screen 4: the actual calendar booking, via BookingWidget ---
   // Swap 'mock' for your real Google Apps Script endpoint (same setup as
