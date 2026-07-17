@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>a question</title>
+<style>
+  :root{
+    --plum: #3a1f33;
+    --plum-deep: #24121f;
+    --blush: #ffb4c6;
+    --peach: #ffd9a0;
+    --gold: #f2c17b;
+    --paper: #fff7ee;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(circle at 30% 20%, var(--plum) 0%, var(--plum-deep) 70%);
+    font-family: 'Georgia', 'Iowan Old Style', serif;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .sky {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .star {
+    position: absolute;
+    background: var(--paper);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.3); }
+  }
+
+  .stage {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .eyebrow {
+    color: var(--gold);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    font-size: 11px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    margin-bottom: 18px;
+    opacity: 0.85;
+  }
+
+  h1 {
+    color: var(--paper);
+    font-size: clamp(28px, 7vw, 52px);
+    font-weight: 400;
+    line-height: 1.25;
+    margin: 0 0 8px 0;
+    max-width: 620px;
+  }
+
+  .name {
+    font-style: italic;
+    color: var(--blush);
+  }
+
+  .sub {
+    color: var(--paper);
+    opacity: 0.6;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    margin-bottom: 48px;
+    letter-spacing: 0.02em;
+  }
+
+  .buttons {
+    position: relative;
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
+    width: 100%;
+  }
+
+  button {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  #yes {
+    background: linear-gradient(135deg, var(--blush), var(--peach));
+    color: var(--plum-deep);
+    padding: 18px 34px;
+    font-size: 17px;
+    box-shadow: 0 8px 24px rgba(255, 180, 198, 0.35);
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), box-shadow 0.35s ease;
+  }
+
+  #yes:active {
+    transform: scale(0.96);
+  }
+
+  #no {
+    background: rgba(255, 247, 238, 0.08);
+    color: var(--paper);
+    padding: 18px 34px;
+    font-size: 17px;
+    border: 1px solid rgba(255, 247, 238, 0.25);
+    position: relative;
+    transition: transform 0.18s ease, opacity 0.3s ease;
+    white-space: nowrap;
+  }
+
+  #no.fixed {
+    position: fixed;
+    z-index: 10;
+  }
+
+  /* Caption is positioned dynamically via JS, anchored under the Yes button */
+  .caption {
+    position: fixed;
+    z-index: 5;
+    color: var(--paper);
+    opacity: 0;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    text-align: center;
+    width: 240px;
+    margin-left: -120px; /* half of width, JS sets left = center point */
+    pointer-events: none;
+    transition: opacity 0.3s ease, top 0.25s ease;
+  }
+
+  .caption.visible {
+    opacity: 0.5;
+  }
+
+  /* ---- Screens ---- */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    background: radial-gradient(circle at 50% 40%, var(--plum) 0%, var(--plum-deep) 75%);
+    z-index: 100;
+    padding: 24px;
+  }
+
+  .screen.show {
+    display: flex;
+  }
+
+  .screen h2 {
+    color: var(--paper);
+    font-size: clamp(26px, 7vw, 46px);
+    font-weight: 400;
+    margin: 0 0 10px 0;
+  }
+
+  .screen p.tag {
+    color: var(--blush);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    opacity: 0.75;
+    margin: 0 0 40px 0;
+  }
+
+  .continue-btn {
+    margin-top: 40px;
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid rgba(242, 193, 123, 0.5);
+    padding: 14px 30px;
+    font-size: 14px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.2s ease;
+  }
+
+  .continue-btn:hover {
+    background: rgba(242, 193, 123, 0.12);
+  }
+
+  .continue-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Craving grid */
+  .craving-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(90px, 130px));
+    gap: 14px;
+    max-width: 460px;
+  }
+
+  @media (max-width: 420px) {
+    .craving-grid { grid-template-columns: repeat(2, minmax(100px, 140px)); }
+  }
+
+  .craving-card {
+    background: rgba(255, 247, 238, 0.06);
+    border: 1px solid rgba(255, 247, 238, 0.14);
+    border-radius: 18px;
+    padding: 18px 10px;
+    cursor: pointer;
+    color: var(--paper);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .craving-card .emoji {
+    font-size: 28px;
+  }
+
+  .craving-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 180, 198, 0.14);
+    border-color: rgba(255, 180, 198, 0.4);
+  }
+
+  .craving-card:active {
+    transform: translateY(-1px) scale(0.97);
+  }
+
+  .craving-card.selected {
+    background: linear-gradient(135deg, var(--blush), var(--peach));
+    color: var(--plum-deep);
+    border-color: transparent;
+  }
+
+  .custom-wrap {
+    margin-top: 26px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .custom-wrap.show {
+    display: flex;
+  }
+
+  .custom-wrap input {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: rgba(255, 247, 238, 0.08);
+    border: 1px solid rgba(255, 247, 238, 0.25);
+    color: var(--paper);
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    width: 260px;
+    text-align: center;
+    outline: none;
+  }
+
+  .custom-wrap input::placeholder {
+    color: rgba(255, 247, 238, 0.4);
+  }
+
+  .custom-wrap input:focus {
+    border-color: var(--blush);
+  }
+
+  .confirm-btn {
+    background: linear-gradient(135deg, var(--blush), var(--peach));
+    color: var(--plum-deep);
+    padding: 12px 26px;
+    font-size: 13px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 700;
+    border-radius: 999px;
+    cursor: pointer;
+    border: none;
+  }
+
+  #finalMsg {
+    display: none;
+    max-width: 480px;
+  }
+
+  #finalMsg.show {
+    display: flex;
+  }
+
+  .confetti-piece {
+    position: fixed;
+    top: -20px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 101;
+    animation: fall linear forwards;
+  }
+
+  @keyframes fall {
+    to {
+      transform: translateY(110vh) rotate(600deg);
+    }
+  }
+
+  /* Booking widget re-themed to match the page instead of its default light card */
+  #bookingMount {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  #bookingMount .cbw {
+    --cbw-accent: var(--gold);
+    --cbw-ink: var(--paper);
+    --cbw-mut: rgba(255, 247, 238, 0.55);
+    --cbw-line: rgba(255, 247, 238, 0.18);
+    --cbw-bg: rgba(255, 247, 238, 0.05);
+    --cbw-soft: rgba(255, 247, 238, 0.09);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    text-align: left;
+    backdrop-filter: blur(6px);
+  }
+
+  #bookingMount .cbw-btn.pri {
+    color: var(--plum-deep);
+  }
+
+  #bookingMount .cbw-grid button.sel,
+  #bookingMount .cbw-slots button.sel {
+    color: var(--plum-deep);
+  }
+
+  #bookingMount .cbw-done .ico {
+    color: var(--plum-deep);
+  }
+
+  .skip-link {
+    margin-top: 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 247, 238, 0.45);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" id="sky"></div>
+
+<!-- Screen 1: the ask -->
+<div class="stage" id="stage">
+  <div class="eyebrow">a question, sincerely asked</div>
+  <h1>Will you go out with me,<br><span class="name">Schatz</span>?</h1>
+  <div class="sub">take your time — one of these buttons works</div>
+
+  <div class="buttons" id="buttonRow">
+    <button id="yes">Yes, obviously</button>
+    <button id="no">No</button>
+  </div>
+</div>
+
+<div class="caption" id="caption"></div>
+
+<!-- Screen 2: she said yes, prompt to continue -->
+<div class="screen" id="burst">
+  <h2>She said yes 🎉</h2>
+  <p class="tag">best decision made today</p>
+  <button class="continue-btn" id="continueBtn">what are we eating? →</button>
+</div>
+
+<!-- Screen 3: craving picker -->
+<div class="screen" id="craving">
+  <div class="eyebrow">round two</div>
+  <h2>What are you craving?</h2>
+  <p class="tag">pick one, or make up your own</p>
+
+  <div class="craving-grid" id="cravingGrid">
+    <div class="craving-card" data-value="Pizza"><span class="emoji">🍕</span>Pizza</div>
+    <div class="craving-card" data-value="Pasta"><span class="emoji">🍝</span>Pasta</div>
+    <div class="craving-card" data-value="Salad"><span class="emoji">🥗</span>Salad</div>
+    <div class="craving-card" data-value="Asian"><span class="emoji">🍜</span>Asian</div>
+    <div class="craving-card" data-value="Afro"><span class="emoji">🍲</span>Afro</div>
+    <div class="craving-card" data-value="Burger"><span class="emoji">🍔</span>Burger</div>
+    <div class="craving-card" data-value="__custom" id="customCard"><span class="emoji">✨</span>Custom</div>
+  </div>
+
+  <div class="custom-wrap" id="customWrap">
+    <input type="text" id="customInput" placeholder="what are you thinking?" maxlength="40">
+    <button class="confirm-btn" id="customConfirm">that's the one</button>
+  </div>
+</div>
+
+<!-- Screen 4: pick a date & time -->
+<div class="screen" id="bookTime">
+  <div class="eyebrow" id="bookEyebrow">round three</div>
+  <h2>When's good for you?</h2>
+  <p class="tag">grab a slot, it lands straight on my calendar</p>
+  <div id="bookingMount"><div id="booking"></div></div>
+  <button class="skip-link" id="skipBooking">skip this — we'll figure out a time by text</button>
+</div>
+
+<!-- Screen 5: final confirmation -->
+<div class="screen" id="finalMsg">
+  <div class="eyebrow">it's a date</div>
+  <h2 id="finalTitle">Great choice.</h2>
+  <p class="tag" id="finalSub">I'll find us somewhere good. See you soon 💛</p>
+</div>
+
+<script src="booking-widget.js"></script>
+
+<script>
+(function(){
+  // starfield
+  const sky = document.getElementById('sky');
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 1;
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.animationDelay = (Math.random() * 3) + 's';
+    sky.appendChild(s);
+  }
+
+  const noBtn = document.getElementById('no');
+  const yesBtn = document.getElementById('yes');
+  const caption = document.getElementById('caption');
+  const burst = document.getElementById('burst');
+  const continueBtn = document.getElementById('continueBtn');
+  const cravingScreen = document.getElementById('craving');
+  const cravingGrid = document.getElementById('cravingGrid');
+  const customCard = document.getElementById('customCard');
+  const customWrap = document.getElementById('customWrap');
+  const customInput = document.getElementById('customInput');
+  const customConfirm = document.getElementById('customConfirm');
+  const bookTime = document.getElementById('bookTime');
+  const skipBooking = document.getElementById('skipBooking');
+  const finalMsg = document.getElementById('finalMsg');
+  const finalTitle = document.getElementById('finalTitle');
+  const finalSub = document.getElementById('finalSub');
+
+  let cravingChoice = null; // e.g. "Pizza it is 🍕"
+
+  const lines = [
+    "nice try",
+    "not that one",
+    "getting warmer... for yes",
+    "it's shy",
+    "keep trying, I believe in you (to click yes)",
+    "the no button has trust issues",
+    "so close, yet so far",
+    "it's ticklish, apparently",
+    "still no. try the other one",
+    "this button is committed to the bit"
+  ];
+  let lineIndex = 0;
+  let dodgeCount = 0;
+  let yesScale = 1;
+
+  function fixNoButtonPosition() {
+    if (!noBtn.classList.contains('fixed')) {
+      const rect = noBtn.getBoundingClientRect();
+      noBtn.classList.add('fixed');
+      noBtn.style.left = rect.left + 'px';
+      noBtn.style.top = rect.top + 'px';
+      noBtn.style.margin = '0';
+    }
+  }
+
+  // Position the caption centered under the Yes button, clamped to viewport
+  function positionCaption() {
+    const yesRect = yesBtn.getBoundingClientRect();
+    const centerX = yesRect.left + yesRect.width / 2;
+    const top = yesRect.bottom + 14;
+    const clampedX = Math.min(Math.max(centerX, 130), window.innerWidth - 130);
+    caption.style.left = clampedX + 'px';
+    caption.style.top = top + 'px';
+  }
+
+  function moveNoButton(clientX, clientY) {
+    fixNoButtonPosition();
+
+    const btnRect = noBtn.getBoundingClientRect();
+    const w = btnRect.width || 100;
+    const h = btnRect.height || 54;
+    const margin = 16;
+    const maxX = window.innerWidth - w - margin;
+    const maxY = window.innerHeight - h - margin;
+
+    let newX, newY, attempts = 0;
+    do {
+      newX = margin + Math.random() * Math.max(1, maxX - margin);
+      newY = margin + Math.random() * Math.max(1, maxY - margin);
+      attempts++;
+    } while (
+      clientX != null &&
+      Math.hypot(newX - clientX, newY - clientY) < 140 &&
+      attempts < 12
+    );
+
+    noBtn.style.left = newX + 'px';
+    noBtn.style.top = newY + 'px';
+
+    dodgeCount++;
+    positionCaption();
+    caption.classList.remove('visible');
+    setTimeout(() => {
+      caption.textContent = lines[lineIndex % lines.length];
+      lineIndex++;
+      positionCaption();
+      caption.classList.add('visible');
+    }, 150);
+
+    // yes button grows a little every few dodges, gently
+    if (dodgeCount % 2 === 0 && yesScale < 1.5) {
+      yesScale += 0.07;
+      yesBtn.style.transform = `scale(${yesScale})`;
+      positionCaption();
+    }
+  }
+
+  // Desktop: dodge on hover approach
+  noBtn.addEventListener('mouseenter', (e) => {
+    moveNoButton(e.clientX, e.clientY);
+  });
+
+  // Mobile: dodge on touchstart (before the tap registers as a click)
+  noBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    moveNoButton(t.clientX, t.clientY);
+  }, { passive: false });
+
+  // Fallback: if somehow clicked/tapped anyway, still dodge instead of firing
+  noBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    moveNoButton(e.clientX, e.clientY);
+  });
+
+  // Also dodge if the pointer merely gets close, for extra chaos on desktop
+  document.addEventListener('mousemove', (e) => {
+    if (!noBtn.classList.contains('fixed')) return;
+    const rect = noBtn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    if (dist < 70) {
+      moveNoButton(e.clientX, e.clientY);
+    }
+  });
+
+  yesBtn.addEventListener('click', () => {
+    document.getElementById('stage').style.display = 'none';
+    caption.classList.remove('visible');
+    burst.classList.add('show');
+    launchConfetti();
+  });
+
+  function launchConfetti() {
+    const colors = ['#ffb4c6', '#ffd9a0', '#f2c17b', '#fff7ee'];
+    for (let i = 0; i < 80; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const size = Math.random() * 8 + 5;
+      piece.style.width = size + 'px';
+      piece.style.height = size * 0.4 + 'px';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.animationDuration = (Math.random() * 2 + 2.5) + 's';
+      piece.style.animationDelay = (Math.random() * 0.6) + 's';
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 4000);
+    }
+  }
+
+  // --- Screen 2 -> 3 ---
+  continueBtn.addEventListener('click', () => {
+    burst.classList.remove('show');
+    cravingScreen.classList.add('show');
+  });
+
+  // --- Screen 3: craving grid ---
+  const foodMessages = {
+    Pizza: "Pizza it is 🍕",
+    Pasta: "Pasta it is 🍝",
+    Salad: "Salad it is 🥗",
+    Asian: "Asian food it is 🍜",
+    Afro: "Afro food it is 🍲",
+    Burger: "Burger it is 🍔"
+  };
+
+  // short label shown inside the booking widget's summary bar
+  const foodLabels = {
+    Pizza: "Dinner: Pizza",
+    Pasta: "Dinner: Pasta",
+    Salad: "Dinner: Salad",
+    Asian: "Dinner: Asian food",
+    Afro: "Dinner: Afro food",
+    Burger: "Dinner: Burger"
+  };
+
+  cravingGrid.querySelectorAll('.craving-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const val = card.getAttribute('data-value');
+
+      if (val === '__custom') {
+        customWrap.classList.add('show');
+        customCard.classList.add('selected');
+        cravingGrid.querySelectorAll('.craving-card').forEach(c => {
+          if (c !== customCard) c.classList.remove('selected');
+        });
+        customInput.focus();
+        return;
+      }
+
+      customWrap.classList.remove('show');
+      cravingGrid.querySelectorAll('.craving-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+
+      const bookingLabel = foodLabels[val] || ("Dinner: " + val);
+      setTimeout(() => goToBooking(foodMessages[val] || (val + " it is"), bookingLabel), 350);
+    });
+  });
+
+  customConfirm.addEventListener('click', () => {
+    const text = customInput.value.trim();
+    if (!text) {
+      customInput.focus();
+      return;
+    }
+    goToBooking(text + " it is 🍽️", "Dinner: " + text);
+  });
+
+  customInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') customConfirm.click();
+  });
+
+  // --- Screen 3 -> 4: hand off to the booking widget ---
+  function goToBooking(choiceLine, bookingLabel) {
+    cravingChoice = choiceLine;
+    cravingScreen.classList.remove('show');
+    bookTime.classList.add('show');
+    initBookingWidget(bookingLabel);
+  }
+
+  skipBooking.addEventListener('click', () => {
+    showFinal(cravingChoice, null, null);
+  });
+
+  // --- Screen 4: the actual calendar booking, via BookingWidget ---
+  // Swap 'mock' for your real Google Apps Script endpoint (same setup as
+  // Click Capybara / Sri Trang) to make this book straight into your calendar.
+  // forceService skips the "what would you like to book" step entirely and
+  // uses this dinner-specific label instead of the backend's own service
+  // list (which — for a real calendar endpoint — would otherwise still be
+  // whatever services/products it's configured with, e.g. massages).
+  function initBookingWidget(label) {
+    const mount = document.getElementById('booking');
+    mount.innerHTML = ''; // reset in case a previous craving was already booked-in-progress
+
+    BookingWidget.init({
+      el: '#booking',
+      endpoint: 'mock', // <- replace with your Apps Script /exec URL when ready
+      lang: 'en',
+      accent: '#f2c17b',
+      forceService: { id: 'date', name: label, duration: 120 },
+      onBooked: bookingOnBooked
+    });
+  }
+
+  function bookingOnBooked(details) {
+    const niceWhen = formatBookingDate(details.date, details.time);
+    showFinal(cravingChoice, niceWhen, true);
+  }
+
+  function formatBookingDate(isoDate, time) {
+    if (!isoDate) return null;
+    const d = new Date(isoDate + 'T12:00:00');
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = d.toLocaleDateString('en-US', { month: 'long' });
+    const day = d.getDate();
+    return `${weekday}, ${month} ${day}${time ? ' at ' + time : ''}`;
+  }
+
+  function showFinal(choiceLine, whenLine, booked) {
+    bookTime.classList.remove('show');
+    cravingScreen.classList.remove('show');
+    finalTitle.textContent = choiceLine || 'Great choice.';
+    if (booked && whenLine) {
+      finalSub.textContent = `See you ${whenLine} 💛`;
+    } else {
+      finalSub.textContent = "I'll text you to lock in a time. See you soon 💛";
+    }
+    finalMsg.classList.add('show');
+  }
+
+  // reposition gracefully if the window resizes while things are fixed
+  window.addEventListener('resize', () => {
+    if (noBtn.classList.contains('fixed')) {
+      const rect = noBtn.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width - 16;
+      const maxY = window.innerHeight - rect.height - 16;
+      noBtn.style.left = Math.min(rect.left, Math.max(16, maxX)) + 'px';
+      noBtn.style.top = Math.min(rect.top, Math.max(16, maxY)) + 'px';
+    }
+    positionCaption();
+  });
+})();
+</script>
+
+</body>
+</html>
