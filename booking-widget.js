@@ -154,35 +154,52 @@
   }
 
   /* ───────── mock backend for demos ───────── */
-  function mockApi(action, params) {
+  // Default demo data (Sri Trang Thaimassage). Pass cfg.mock = { hours, slotTimes,
+  // services, maxAdvanceDays, minNoticeHours, businessName } to init() to reuse the
+  // mock backend for a different kind of demo (e.g. dinner slots) without touching
+  // this file.
+  var DEFAULT_MOCK = {
+    businessName: 'Sri Trang Thaimassage',
+    services: [
+      { id: 'thai',    name: 'Traditionelle Thai Massage · 52 €', duration: 60 },
+      { id: 'aroma',   name: 'Hot Aroma Öl Massage · 58 €',       duration: 60 },
+      { id: 'stone',   name: 'Hot Stone Massage · 68 €',          duration: 60 },
+      { id: 'stress',  name: 'Anti Stress Massage · 58 €',        duration: 60 },
+      { id: 'fuss',    name: 'Fuß Reflexzonen Massage · 53 €',    duration: 60 },
+      { id: 'kopf',    name: 'Kopf Massage · 53 €',               duration: 60 },
+      { id: 'sport',   name: 'Sport Massage · 58 €',              duration: 60 },
+      { id: 'stempel', name: 'Thailändische Kräuterstempel · 68 €', duration: 60 }
+    ],
+    // Mo geschlossen, Di–Sa 10–20, So 10–19
+    hours: { 0: ['10:00-19:00'], 1: [], 2: ['10:00-20:00'], 3: ['10:00-20:00'],
+             4: ['10:00-20:00'], 5: ['10:00-20:00'], 6: ['10:00-20:00'] },
+    slotTimes: ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'],
+    maxAdvanceDays: 60,
+    minNoticeHours: 12
+  };
+
+  function mockApi(action, params, overrides) {
+    var m = {
+      businessName: (overrides && overrides.businessName) || DEFAULT_MOCK.businessName,
+      services: (overrides && overrides.services) || DEFAULT_MOCK.services,
+      hours: (overrides && overrides.hours) || DEFAULT_MOCK.hours,
+      slotTimes: (overrides && overrides.slotTimes) || DEFAULT_MOCK.slotTimes,
+      maxAdvanceDays: (overrides && overrides.maxAdvanceDays) || DEFAULT_MOCK.maxAdvanceDays,
+      minNoticeHours: (overrides && overrides.minNoticeHours) != null ? overrides.minNoticeHours : DEFAULT_MOCK.minNoticeHours
+    };
     return new Promise(function (res) {
       setTimeout(function () {
         if (action === 'config') {
           res({
-            businessName: 'Sri Trang Thaimassage',
-            services: [
-              { id: 'thai',    name: 'Traditionelle Thai Massage · 52 €', duration: 60 },
-              { id: 'aroma',   name: 'Hot Aroma Öl Massage · 58 €',       duration: 60 },
-              { id: 'stone',   name: 'Hot Stone Massage · 68 €',          duration: 60 },
-              { id: 'stress',  name: 'Anti Stress Massage · 58 €',        duration: 60 },
-              { id: 'fuss',    name: 'Fuß Reflexzonen Massage · 53 €',    duration: 60 },
-              { id: 'kopf',    name: 'Kopf Massage · 53 €',               duration: 60 },
-              { id: 'sport',   name: 'Sport Massage · 58 €',              duration: 60 },
-              { id: 'stempel', name: 'Thailändische Kräuterstempel · 68 €', duration: 60 }
-            ],
-            // Mo geschlossen, Di–Sa 10–20, So 10–19
-            hours: { 0: ['10:00-19:00'], 1: [], 2: ['10:00-20:00'], 3: ['10:00-20:00'],
-                     4: ['10:00-20:00'], 5: ['10:00-20:00'], 6: ['10:00-20:00'] },
-            maxAdvanceDays: 60, minNoticeHours: 12
+            businessName: m.businessName, services: m.services, hours: m.hours,
+            maxAdvanceDays: m.maxAdvanceDays, minNoticeHours: m.minNoticeHours
           });
         } else if (action === 'slots') {
           var day = new Date(params.date + 'T12:00:00').getDay();
-          if (day === 1) return res({ slots: [] }); // Montag Ruhetag
-          var all = ['10:00','11:00','12:00','13:00','14:00','15:00',
-                     '16:00','17:00','18:00','19:00'];
-          // pseudo-random availability per date
+          if (!(m.hours[day] || []).length) return res({ slots: [] }); // closed that day
+          // pseudo-random availability per date, just for the demo
           var seed = params.date.split('-').join('') % 7;
-          res({ slots: all.filter(function (_, i) { return (i + seed) % 3 !== 0; }) });
+          res({ slots: m.slotTimes.filter(function (_, i) { return (i + seed) % 3 !== 0; }) });
         } else {
           res({ ok: true });
         }
@@ -221,7 +238,7 @@
     function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 
     function api(action, params, body) {
-      if (mock) return mockApi(action, params || {});
+      if (mock) return mockApi(action, params || {}, cfg.mock);
       if (body) {
         return fetch(cfg.endpoint, {
           method: 'POST', body: JSON.stringify(body),

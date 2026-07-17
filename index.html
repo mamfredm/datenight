@@ -140,6 +140,7 @@
   #no.fixed {
     position: fixed;
     z-index: 10;
+    transition: left 0.62s cubic-bezier(.16, 1, .3, 1), top 0.62s cubic-bezier(.16, 1, .3, 1), transform 0.18s ease;
   }
 
   /* Caption is positioned dynamically via JS, anchored under the Yes button */
@@ -374,6 +375,25 @@
     text-decoration: underline;
     cursor: pointer;
   }
+
+  .back-link {
+    position: absolute;
+    top: 22px;
+    left: 22px;
+    background: none;
+    border: none;
+    color: rgba(255, 247, 238, 0.45);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    padding: 8px 10px;
+    transition: color 0.2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--paper);
+  }
 </style>
 </head>
 <body>
@@ -403,6 +423,7 @@
 
 <!-- Screen 3: craving picker -->
 <div class="screen" id="craving">
+  <button class="back-link" id="backToBurst">‹ back</button>
   <div class="eyebrow">round two</div>
   <h2>What are you craving?</h2>
   <p class="tag">pick one, or make up your own</p>
@@ -425,6 +446,7 @@
 
 <!-- Screen 4: pick a date & time -->
 <div class="screen" id="bookTime">
+  <button class="back-link" id="backToCraving">‹ change food</button>
   <div class="eyebrow" id="bookEyebrow">round three</div>
   <h2>When's good for you?</h2>
   <p class="tag">grab a slot, it lands straight on my calendar</p>
@@ -512,6 +534,32 @@
     caption.style.top = top + 'px';
   }
 
+  // Areas the No button should never land on top of — headline, subtext, Yes button
+  function getSafeZones() {
+    const pad = 22;
+    const zones = [];
+    const guarded = [
+      document.querySelector('#stage h1'),
+      document.querySelector('#stage .sub'),
+      yesBtn
+    ];
+    guarded.forEach(elm => {
+      if (!elm) return;
+      const r = elm.getBoundingClientRect();
+      zones.push({
+        left: r.left - pad,
+        top: r.top - pad,
+        right: r.right + pad,
+        bottom: r.bottom + pad
+      });
+    });
+    return zones;
+  }
+
+  function overlapsZone(x, y, w, h, zones) {
+    return zones.some(z => x < z.right && x + w > z.left && y < z.bottom && y + h > z.top);
+  }
+
   function moveNoButton(clientX, clientY) {
     fixNoButtonPosition();
 
@@ -521,6 +569,7 @@
     const margin = 16;
     const maxX = window.innerWidth - w - margin;
     const maxY = window.innerHeight - h - margin;
+    const zones = getSafeZones();
 
     let newX, newY, attempts = 0;
     do {
@@ -528,9 +577,11 @@
       newY = margin + Math.random() * Math.max(1, maxY - margin);
       attempts++;
     } while (
-      clientX != null &&
-      Math.hypot(newX - clientX, newY - clientY) < 140 &&
-      attempts < 12
+      attempts < 40 &&
+      (
+        (clientX != null && Math.hypot(newX - clientX, newY - clientY) < 140) ||
+        overlapsZone(newX, newY, w, h, zones)
+      )
     );
 
     noBtn.style.left = newX + 'px';
@@ -611,6 +662,16 @@
   // --- Screen 2 -> 3 ---
   continueBtn.addEventListener('click', () => {
     burst.classList.remove('show');
+    cravingScreen.classList.add('show');
+  });
+
+  document.getElementById('backToBurst').addEventListener('click', () => {
+    cravingScreen.classList.remove('show');
+    burst.classList.add('show');
+  });
+
+  document.getElementById('backToCraving').addEventListener('click', () => {
+    bookTime.classList.remove('show');
     cravingScreen.classList.add('show');
   });
 
@@ -699,7 +760,15 @@
       lang: 'en',
       accent: '#f2c17b',
       forceService: { id: 'date', name: label, duration: 120 },
-      onBooked: bookingOnBooked
+      onBooked: bookingOnBooked,
+      // demo-only: makes the mock backend offer dinner-time slots instead of
+      // the Sri Trang massage-salon defaults. Drop this once endpoint points
+      // at your real calendar — a real backend defines its own hours.
+      mock: {
+        hours: { 0: ['17:00-22:00'], 1: ['17:00-22:00'], 2: ['17:00-22:00'], 3: ['17:00-22:00'],
+                 4: ['17:00-22:00'], 5: ['17:00-22:00'], 6: ['17:00-22:00'] },
+        slotTimes: ['17:00', '18:00', '19:00', '20:00', '21:00', '22:00']
+      }
     });
   }
 
