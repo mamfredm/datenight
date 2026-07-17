@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>🔔 important question 🔔</title>
 <style>
+  /* ═══════════════════════════════════════════════════════════════
+     PAGE STRUCTURE — 5 screens, only one visible at a time via
+     the .show class. In order: #stage → #burst → #craving →
+     #bookTime → #finalMsg. Search this file for "SCREEN N" to
+     jump between them (both in this <style> block and the JS block
+     further down use the same numbering).
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ---- design tokens: change these to re-theme the whole page ---- */
   :root{
     --plum: #3a1f33;
     --plum-deep: #24121f;
@@ -27,6 +36,7 @@
     touch-action: manipulation;
   }
 
+  /* ---- animated starfield behind everything ---- */
   .sky {
     position: fixed;
     inset: 0;
@@ -47,6 +57,10 @@
     0%, 100% { opacity: 0.2; transform: scale(1); }
     50% { opacity: 0.9; transform: scale(1.3); }
   }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 1 — the ask (#stage): headline + the dodging Yes/No buttons
+     ═══════════════════════════════════════════════════════════════ */
 
   .stage {
     position: relative;
@@ -137,13 +151,18 @@
     white-space: nowrap;
   }
 
+  /* .fixed gets added by JS the first time the button dodges — switches it
+     from sitting in normal document flow to being freely positionable via
+     left/top anywhere on screen. The left/top transition is what makes the
+     dodge glide instead of teleport. */
   #no.fixed {
     position: fixed;
     z-index: 10;
     transition: left 0.62s cubic-bezier(.16, 1, .3, 1), top 0.62s cubic-bezier(.16, 1, .3, 1), transform 0.18s ease;
   }
 
-  /* Caption is positioned dynamically via JS, anchored under the Yes button */
+  /* Caption ("nice try", "still no"...) is positioned dynamically via JS,
+     anchored under the Yes button — see positionCaption() in the script. */
   .caption {
     position: fixed;
     z-index: 5;
@@ -162,7 +181,12 @@
     opacity: 0.5;
   }
 
-  /* ---- Screens ---- */
+  /* ═══════════════════════════════════════════════════════════════
+     SHARED SCREEN LAYOUT — screens 2–5 (#burst, #craving, #bookTime,
+     #finalMsg) all reuse this .screen / .screen.show pattern: full-
+     screen overlay, hidden by default, shown by adding "show".
+     ═══════════════════════════════════════════════════════════════ */
+
   .screen {
     position: fixed;
     inset: 0;
@@ -195,6 +219,7 @@
     margin: 0 0 40px 0;
   }
 
+  /* ---- SCREEN 2 (#burst): "you said yes" + button into screen 3 ---- */
   .continue-btn {
     margin-top: 40px;
     background: transparent;
@@ -216,7 +241,7 @@
     transform: scale(0.97);
   }
 
-  /* Craving grid */
+  /* ---- SCREEN 3 (#craving): the food-choice grid ---- */
   .craving-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(90px, 130px));
@@ -265,6 +290,7 @@
     border-color: transparent;
   }
 
+  /* the "Custom" card reveals this instead of jumping straight to booking */
   .custom-wrap {
     margin-top: 26px;
     display: none;
@@ -310,6 +336,7 @@
     border: none;
   }
 
+  /* ---- SCREEN 5 (#finalMsg): "it's a date" ---- */
   #finalMsg {
     display: none;
     max-width: 480px;
@@ -319,6 +346,7 @@
     display: flex;
   }
 
+  /* ---- confetti burst, triggered on Yes ---- */
   .confetti-piece {
     position: fixed;
     top: -20px;
@@ -334,7 +362,17 @@
     }
   }
 
-  /* Booking widget re-themed to match the page instead of its default light card */
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 4 (#bookTime) — the embedded BookingWidget from
+     booking-widget.js. The widget ships its own default (light)
+     look, driven entirely by CSS custom properties on its .cbw
+     root — this block re-declares those variables scoped to
+     #bookingMount so the widget matches this page's dark theme
+     instead of its defaults. This is the ONLY place styling the
+     widget happens; booking-widget.js itself has no page-specific
+     styling in it.
+     ═══════════════════════════════════════════════════════════════ */
+
   #bookingMount {
     width: 100%;
     max-width: 460px;
@@ -352,6 +390,7 @@
     backdrop-filter: blur(6px);
   }
 
+  /* buttons that sit on the gold accent color need dark text for contrast */
   #bookingMount .cbw-btn.pri {
     color: var(--plum-deep);
   }
@@ -376,6 +415,7 @@
     cursor: pointer;
   }
 
+  /* ---- shared: the small "‹ back" links on screens 3 & 4 ---- */
   .back-link {
     position: absolute;
     top: 22px;
@@ -467,7 +507,21 @@
 
 <script>
 (function(){
-  // starfield
+  /* ═══════════════════════════════════════════════════════════════
+     PAGE FLOW
+       Screen 1 #stage    → she answers the question (Yes / dodging No)
+       Screen 2 #burst    → confirmation + confetti, "what are we eating?"
+       Screen 3 #craving  → pick a food (or type a custom one)
+       Screen 4 #bookTime → BookingWidget: pick an actual date & time
+       Screen 5 #finalMsg → wrap-up, shows the confirmed choice + slot
+
+     Screens are just <div class="screen"> elements toggled via the
+     "show" class (see the .screen CSS above). Only one is visible
+     at a time. Each transition below is a pair of classList calls:
+     hide the current screen, show the next one.
+     ═══════════════════════════════════════════════════════════════ */
+
+  // ---- decorative starfield behind everything ----
   const sky = document.getElementById('sky');
   for (let i = 0; i < 40; i++) {
     const s = document.createElement('div');
@@ -481,24 +535,33 @@
     sky.appendChild(s);
   }
 
+  // ---- element references, grouped by which screen they belong to ----
   const noBtn = document.getElementById('no');
   const yesBtn = document.getElementById('yes');
   const caption = document.getElementById('caption');
+
   const burst = document.getElementById('burst');
   const continueBtn = document.getElementById('continueBtn');
+
   const cravingScreen = document.getElementById('craving');
   const cravingGrid = document.getElementById('cravingGrid');
   const customCard = document.getElementById('customCard');
   const customWrap = document.getElementById('customWrap');
   const customInput = document.getElementById('customInput');
   const customConfirm = document.getElementById('customConfirm');
+
   const bookTime = document.getElementById('bookTime');
 // const skipBooking = document.getElementById('skipBooking'); //
+
   const finalMsg = document.getElementById('finalMsg');
   const finalTitle = document.getElementById('finalTitle');
   const finalSub = document.getElementById('finalSub');
 
-  let cravingChoice = null; // e.g. "Pizza it is 🍕"
+  let cravingChoice = null; // set on screen 3, read again on screen 5 — e.g. "Pizza it is 🍕"
+
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 1 — the dodging "No" button
+     ═══════════════════════════════════════════════════════════════ */
 
   const lines = [
     "nice try",
@@ -516,6 +579,8 @@
   let dodgeCount = 0;
   let yesScale = 1;
 
+  // first dodge: switch #no from normal document flow to position:fixed
+  // (adds the .fixed class from the CSS above) so it can be placed anywhere.
   function fixNoButtonPosition() {
     if (!noBtn.classList.contains('fixed')) {
       const rect = noBtn.getBoundingClientRect();
@@ -562,6 +627,10 @@
     return zones.some(z => x < z.right && x + w > z.left && y < z.bottom && y + h > z.top);
   }
 
+  // picks a random on-screen spot for the No button that (a) isn't too
+  // close to the cursor/finger that triggered the dodge and (b) doesn't
+  // overlap any of the safe zones above. Tries up to 40 times, then just
+  // gives up and uses the last attempt (better than an infinite loop).
   function moveNoButton(clientX, clientY) {
     fixNoButtonPosition();
 
@@ -637,6 +706,10 @@
     }
   });
 
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 1 → 2 — clicking Yes
+     ═══════════════════════════════════════════════════════════════ */
+
   yesBtn.addEventListener('click', () => {
     document.getElementById('stage').style.display = 'none';
     caption.classList.remove('visible');
@@ -661,7 +734,10 @@
     }
   }
 
-  // --- Screen 2 -> 3 ---
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 2 ↔ 3 — continue to food picker, or come back
+     ═══════════════════════════════════════════════════════════════ */
+
   continueBtn.addEventListener('click', () => {
     burst.classList.remove('show');
     cravingScreen.classList.add('show');
@@ -677,7 +753,15 @@
     cravingScreen.classList.add('show');
   });
 
-  // --- Screen 3: craving grid ---
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 3 — the craving grid
+     Each <div class="craving-card" data-value="X"> needs a matching
+     entry in BOTH lookup tables below, or it falls back to generic
+     text (still works, just less polished). Adding a new card = add
+     the <div> in the HTML + one line in each object here.
+     ═══════════════════════════════════════════════════════════════ */
+
+  // confirmation line shown on screen 5
   const foodMessages = {
     Pizza: "Pizza it is 🍕",
     Pasta: "Pasta it is 🍝",
@@ -733,7 +817,14 @@
     if (e.key === 'Enter') customConfirm.click();
   });
 
-  // --- Screen 3 -> 4: hand off to the booking widget ---
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 3 → 4 — hand off to the BookingWidget
+     This is the main integration point with booking-widget.js.
+     See that file for what each config option below actually does —
+     forceService / onBooked / mock are the "universal" pieces meant
+     to be reused as-is on other sites, not edited.
+     ═══════════════════════════════════════════════════════════════ */
+
   function goToBooking(choiceLine, bookingLabel) {
     cravingChoice = choiceLine;
     cravingScreen.classList.remove('show');
@@ -745,28 +836,30 @@
     showFinal(cravingChoice, null, null); 
   }); */
 
-
-  // --- Screen 4: the actual calendar booking, via BookingWidget ---
-  // Swap 'mock' for your real Google Apps Script endpoint (same setup as
-  // Click Capybara / Sri Trang) to make this book straight into your calendar.
-  // forceService skips the "what would you like to book" step entirely and
-  // uses this dinner-specific label instead of the backend's own service
-  // list (which — for a real calendar endpoint — would otherwise still be
-  // whatever services/products it's configured with, e.g. massages).
   function initBookingWidget(label) {
     const mount = document.getElementById('booking');
     mount.innerHTML = ''; // reset in case a previous craving was already booked-in-progress
 
     BookingWidget.init({
-      el: '#booking',
-      endpoint: 'https://script.google.com/macros/s/AKfycbz6Om6GY6rrB0eoVF8rAiPm_TgoLyc2kJ59S7gGV6GPdP8dq_Kpp5oiuwVKE9bhOAkG/exec', // <- replace with your Apps Script /exec URL when ready
-      lang: 'en',
-      accent: '#f2c17b',
+      el: '#booking',                 // where the widget renders itself
+      endpoint: 'https://script.google.com/macros/s/AKfycbz6Om6GY6rrB0eoVF8rAiPm_TgoLyc2kJ59S7gGV6GPdP8dq_Kpp5oiuwVKE9bhOAkG/exec',
+      lang: 'en',                     // 'en' | 'de'
+      accent: '#f2c17b',              // sets --cbw-accent; rest of the theme comes from the CSS block above
+
+      // Skips the widget's own "what would you like to book" step and
+      // uses this instead — the craving she just picked, with a fixed
+      // 120-minute duration. See booking-widget.js for how forceService
+      // is handled internally.
       forceService: { id: 'date', name: label, duration: 120 },
+
+      // Fires once a slot is actually confirmed — this is what lets this
+      // page move on to screen 5 automatically. See bookingOnBooked below.
       onBooked: bookingOnBooked,
-      // demo-only: makes the mock backend offer dinner-time slots instead of
-      // the Sri Trang massage-salon defaults. Drop this once endpoint points
-      // at your real calendar — a real backend defines its own hours.
+
+      // Only used while endpoint is 'mock' (ignored once you point
+      // endpoint at a real Apps Script URL — a real backend defines its
+      // own hours). Currently unused since endpoint above is already a
+      // live URL — safe to delete this whole "mock" block.
       mock: {
         hours: { 0: ['17:00-22:00'], 1: ['17:00-22:00'], 2: ['17:00-22:00'], 3: ['17:00-22:00'],
                  4: ['17:00-22:00'], 5: ['17:00-22:00'], 6: ['17:00-22:00'] },
@@ -774,6 +867,10 @@
       }
     });
   }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SCREEN 4 → 5 — booking confirmed, show the final message
+     ═══════════════════════════════════════════════════════════════ */
 
   function bookingOnBooked(details) {
     const niceWhen = formatBookingDate(details.date, details.time);
@@ -801,7 +898,10 @@
     finalMsg.classList.add('show');
   }
 
-  // reposition gracefully if the window resizes while things are fixed
+  /* ═══════════════════════════════════════════════════════════════
+     GLOBAL — keeps the No button and caption sane on window resize
+     ═══════════════════════════════════════════════════════════════ */
+
   window.addEventListener('resize', () => {
     if (noBtn.classList.contains('fixed')) {
       const rect = noBtn.getBoundingClientRect();

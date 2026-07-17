@@ -2,7 +2,18 @@
  * Booking Widget — drop-in Calendly-style booking for static sites.
  * Backend: Google Apps Script (see Code.gs).
  *
- * Usage:
+ * ═══════════════════════════════════════════════════════════════
+ * WHAT'S "UNIVERSAL" vs WHAT YOU EDIT PER SITE
+ *
+ * This whole file is meant to be reused as-is on any project — you
+ * should not need to open it up and change code inside. Everything
+ * site-specific (colors, which service is being booked, hours, your
+ * calendar) is passed in from the OUTSIDE, via the init(cfg) options
+ * below. If you find yourself editing something inside this file to
+ * make a new site work, that's usually a sign it should become a new
+ * cfg option instead.
+ *
+ * Basic usage:
  *   <div id="booking"></div>
  *   <script src="booking-widget.js"></script>
  *   <script>
@@ -13,11 +24,48 @@
  *       accent: '#fcba01'      // brand color
  *     });
  *   </script>
+ *
+ * Full list of init(cfg) options:
+ *   el          (required) CSS selector or element to render into.
+ *   endpoint    (required) Your Apps Script /exec URL, or the string
+ *               'mock' to demo the widget with fake data (see mockApi
+ *               below) without any backend at all.
+ *   lang        'de' | 'en' — defaults to 'de'.
+ *   accent      Any CSS color. Sets --cbw-accent. For deeper theming
+ *               (backgrounds, text color, etc.) override the widget's
+ *               other --cbw-* CSS custom properties from your own
+ *               page's stylesheet, scoped to your container — see
+ *               ask-her-out.html's #bookingMount block for an example
+ *               of re-theming the whole widget without touching this
+ *               file.
+ *   forceService  Optional. { id, name, duration }. Skips the widget's
+ *               own "what would you like to book?" step entirely and
+ *               uses this service instead of whatever the backend's
+ *               config returns. Handy when the embedding page already
+ *               knows what's being booked (e.g. a single-purpose
+ *               landing page) rather than showing a menu of services.
+ *   onBooked    Optional callback: function(details). Fires once a
+ *               booking is actually confirmed, with
+ *               { service, date, time, lang }. Lets the embedding
+ *               page react — e.g. show its own "see you then!" screen
+ *               instead of leaving the visitor on the widget's built-in
+ *               done screen.
+ *   mock        Optional. Only used when endpoint is the string 'mock'.
+ *               Lets you override the built-in demo data — see
+ *               DEFAULT_MOCK below — with your own { businessName,
+ *               services, hours, slotTimes, maxAdvanceDays,
+ *               minNoticeHours } for a more realistic demo. Ignored
+ *               once endpoint points at a real backend.
+ * ═══════════════════════════════════════════════════════════════
  */
 (function (global) {
   'use strict';
 
-  /* ───────── i18n ───────── */
+  /* ═══════════════════════════════════════════════════════════════
+     1. TRANSLATIONS — all UI text, per language. Add a language by
+        adding a new key here (e.g. "fr: { ... }") with the same
+        set of fields as "de"/"en".
+     ═══════════════════════════════════════════════════════════════ */
   var I18N = {
     de: {
       chooseService: 'Was möchtest du buchen?',
@@ -28,7 +76,7 @@
       noSlots: 'An diesem Tag sind keine Termine frei.',
       pickDay: 'Bitte wähle einen Tag aus.',
       name: 'Name',
-      email: 'E-Mail (for calendar invites)',
+      email: 'E-Mail',
       phone: 'Telefon (optional)',
       note: 'Anmerkung (optional)',
       back: 'Zurück',
@@ -54,7 +102,7 @@
       noSlots: 'No free times on this day.',
       pickDay: 'Please pick a day.',
       name: 'Name',
-      email: 'Email (for calendar invites)',
+      email: 'Email',
       phone: 'Phone (optional)',
       note: 'Note (optional)',
       back: 'Back',
@@ -73,7 +121,12 @@
     }
   };
 
-  /* ───────── styles (injected once) ───────── */
+  /* ═══════════════════════════════════════════════════════════════
+     2. STYLES — injected into <head> once, scoped under the .cbw
+        class. All colors reference --cbw-* CSS custom properties,
+        which is what makes the widget re-themeable from outside
+        this file (see the top-of-file comment).
+     ═══════════════════════════════════════════════════════════════ */
   var CSS = '' +
   '.cbw{--cbw-accent:#fcba01;--cbw-ink:#1d1d1f;--cbw-mut:#6e6e73;--cbw-line:#e5e5e8;' +
     '--cbw-bg:#fff;--cbw-soft:#f6f6f7;--cbw-radius:14px;' +
@@ -153,31 +206,33 @@
     return lang === 'de' ? p[2] + '.' + p[1] + '.' + p[0] : isoStr;
   }
 
-  /* ───────── mock backend for demos ───────── */
-  // Default demo data (Sri Trang Thaimassage). Pass cfg.mock = { hours, slotTimes,
-  // services, maxAdvanceDays, minNoticeHours, businessName } to init() to reuse the
-  // mock backend for a different kind of demo (e.g. dinner slots) without touching
-  // this file.
+  /* ═══════════════════════════════════════════════════════════════
+     3. MOCK BACKEND — lets you preview/demo the widget with
+        endpoint: 'mock' and no real backend at all. This is
+        template/placeholder data on purpose (not tied to any real
+        business) — override any of it per-site via cfg.mock, e.g.
+        { hours, slotTimes, services, maxAdvanceDays, minNoticeHours,
+        businessName } passed into init(). See ask-her-out.html's
+        initBookingWidget() for a real example of overriding hours
+        and slotTimes for a "dinner date" use case.
+     ═══════════════════════════════════════════════════════════════ */
   var DEFAULT_MOCK = {
-    businessName: 'Sri Trang Thaimassage',
+    businessName: 'Your Business Name',
     services: [
-      { id: 'thai',    name: 'Traditionelle Thai Massage · 52 €', duration: 60 },
-      { id: 'aroma',   name: 'Hot Aroma Öl Massage · 58 €',       duration: 60 },
-      { id: 'stone',   name: 'Hot Stone Massage · 68 €',          duration: 60 },
-      { id: 'stress',  name: 'Anti Stress Massage · 58 €',        duration: 60 },
-      { id: 'fuss',    name: 'Fuß Reflexzonen Massage · 53 €',    duration: 60 },
-      { id: 'kopf',    name: 'Kopf Massage · 53 €',               duration: 60 },
-      { id: 'sport',   name: 'Sport Massage · 58 €',              duration: 60 },
-      { id: 'stempel', name: 'Thailändische Kräuterstempel · 68 €', duration: 60 }
+      { id: 'service-a', name: 'Service A · 45 min', duration: 45 },
+      { id: 'service-b', name: 'Service B · 60 min', duration: 60 },
+      { id: 'service-c', name: 'Service C · 90 min', duration: 90 }
     ],
-    // Mo geschlossen, Di–Sa 10–20, So 10–19
-    hours: { 0: ['10:00-19:00'], 1: [], 2: ['10:00-20:00'], 3: ['10:00-20:00'],
-             4: ['10:00-20:00'], 5: ['10:00-20:00'], 6: ['10:00-20:00'] },
-    slotTimes: ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'],
+    // Closed Sundays, open every other day 09:00–18:00 — adjust freely,
+    // this is just placeholder data for the 'mock' demo mode.
+    hours: { 0: [], 1: ['09:00-18:00'], 2: ['09:00-18:00'], 3: ['09:00-18:00'],
+             4: ['09:00-18:00'], 5: ['09:00-18:00'], 6: ['09:00-18:00'] },
+    slotTimes: ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'],
     maxAdvanceDays: 60,
     minNoticeHours: 12
   };
 
+  // ---- mock API implementation (only used when endpoint === 'mock') ----
   function mockApi(action, params, overrides) {
     var m = {
       businessName: (overrides && overrides.businessName) || DEFAULT_MOCK.businessName,
@@ -207,7 +262,11 @@
     });
   }
 
-  /* ───────── widget ───────── */
+  /* ═══════════════════════════════════════════════════════════════
+     4. WIDGET — the actual UI. Everything below runs once per
+        init() call, so a page could technically embed more than
+        one independent booking widget if it ever needed to.
+     ═══════════════════════════════════════════════════════════════ */
   function init(cfg) {
     injectCss();
     var root = typeof cfg.el === 'string' ? document.querySelector(cfg.el) : cfg.el;
@@ -265,8 +324,9 @@
       return v;
     }
 
-    /* jump straight to the calendar with a given service pre-selected —
-       used when someone clicks a massage in the price list above */
+    // Jump straight to the calendar with a given service pre-selected —
+    // e.g. when a service is clicked from a price list elsewhere on the
+    // page, or (as in ask-her-out.html) via forceService above.
     function selectServiceById(id) {
       if (!state.remote) { state.pendingService = id; return; } // config not loaded yet
       var matches = state.remote.services.filter(function (s) { return s.id === id; });
@@ -275,7 +335,7 @@
       renderCalendar();
     }
 
-    /* step 1: services */
+    // ---- step 1: choose a service (skipped entirely if forceService is set) ----
     function renderServices() {
       var v = view();
       v.appendChild(steps(1));
@@ -303,7 +363,7 @@
       return el('div', 'cbw-sum', parts.join(' · '));
     }
 
-    /* step 2: calendar + slots */
+    // ---- step 2: pick a day, then a time slot ----
     function isDayOpen(d) {
       var hours = state.remote.hours || {};
       var wd = d.getDay();
@@ -391,7 +451,7 @@
       });
     }
 
-    /* step 3: details form */
+    // ---- step 3: contact details form ----
     function renderForm() {
       var v = view();
       v.appendChild(steps(forced ? 2 : 3));
@@ -450,7 +510,7 @@
       };
     }
 
-    /* done */
+    // ---- confirmation screen, shown after a successful booking ----
     function renderDone() {
       var v = view();
       var d = el('div', 'cbw-done');
@@ -478,7 +538,7 @@
       }
     }
 
-    /* boot */
+    // ---- boot: fetch config, then decide which step to open on ----
     box.appendChild(el('div', 'cbw-hint', t.loading));
     api('config', {}).then(function (r) {
       state.remote = r;
@@ -499,5 +559,9 @@
     return { selectService: selectServiceById };
   }
 
+  /* ═══════════════════════════════════════════════════════════════
+     5. PUBLIC API — this is the only thing the outside world sees:
+        window.BookingWidget.init(cfg). Everything above is private.
+     ═══════════════════════════════════════════════════════════════ */
   global.BookingWidget = { init: init };
 })(window);
