@@ -220,6 +220,23 @@
   }
 
   /* ---- SCREEN 2 (#burst): "you said yes" + button into screen 3 ---- */
+  .sticker {
+    width: 128px;
+    height: 128px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid var(--paper);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    transform: rotate(-8deg);
+    margin-bottom: 20px;
+    animation: stickerPop 0.5s cubic-bezier(.34, 1.56, .64, 1) both;
+  }
+
+  @keyframes stickerPop {
+    0%   { opacity: 0; transform: rotate(-8deg) scale(0.4); }
+    100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  }
+
   .continue-btn {
     margin-top: 40px;
     background: transparent;
@@ -456,6 +473,7 @@
 
 <!-- Screen 2: she said yes, prompt to continue -->
 <div class="screen" id="burst">
+  <img class="sticker" src="yeah_dog.webp" alt="">
   <h2>Wohoo! Look at that, main character behavior. 🎉</h2>
   <p class="tag">That took embarrassingly long, but okay</p>
   <button class="continue-btn" id="continueBtn">what are we eating? →</button>
