@@ -34,7 +34,7 @@ var CONFIG = {
   // (primary) calendar. To use a specific calendar instead, paste its
   // Calendar ID here (Google Calendar → calendar settings → "Integrate
   // calendar" → Calendar ID).
-  calendarId: '',
+  calendarId: 'example@gmail.com',
 
   // Other calendars to check for conflicts, WITHOUT ever creating events
   // on them — e.g. a second calendar you use to block off time (work,
@@ -47,7 +47,7 @@ var CONFIG = {
   // account from the deployment) with at least "See all event details"
   // permission, or getCalendarById() won't be able to read it.
   additionalBusyCalendarIds: [
-    // 'your.second.calendar@group.calendar.google.com'
+    // 'family0123456789000@group.calendar.google.com'
   ],
 
   // Opening hours per weekday. 0 = Sunday ... 6 = Saturday, matching JS Date#getDay().

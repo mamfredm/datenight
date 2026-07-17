@@ -499,7 +499,7 @@
 <!-- Screen 5: final confirmation -->
 <div class="screen" id="finalMsg">
   <div class="eyebrow">it's a date</div>
-  <h2 id="finalTitle">Great choice.</h2>
+  <h2 id="finalTitle">Counting down already</h2>
   <p class="tag" id="finalSub">I'll find us somewhere good. See you soon 💛</p>
 </div>
 
@@ -889,11 +889,11 @@
   function showFinal(choiceLine, whenLine, booked) {
     bookTime.classList.remove('show');
     cravingScreen.classList.remove('show');
-    finalTitle.textContent = choiceLine || 'Great choice.';
+    finalTitle.textContent = 'Counting down already';
     if (booked && whenLine) {
-      finalSub.textContent = `See you ${whenLine} 💛`;
+      finalSub.textContent = `${choiceLine || ''} — see you ${whenLine} 💛`;
     } else {
-      finalSub.textContent = "I'll text you to lock in a time. See you soon 💛";
+      finalSub.textContent = `${choiceLine ? choiceLine + ' — ' : ''}I'll text you to lock in a time. See you soon 💛`;
     }
     finalMsg.classList.add('show');
   }
