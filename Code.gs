@@ -30,10 +30,25 @@ var CONFIG = {
     { id: 'date', name: 'Dinner date', duration: 120 }
   ],
 
-  // Which calendar to read/write. '' = your default (primary) calendar.
-  // To use a specific calendar instead, paste its Calendar ID here
-  // (Google Calendar → calendar settings → "Integrate calendar" → Calendar ID).
+  // Which calendar new bookings actually get created on. '' = your default
+  // (primary) calendar. To use a specific calendar instead, paste its
+  // Calendar ID here (Google Calendar → calendar settings → "Integrate
+  // calendar" → Calendar ID).
   calendarId: '',
+
+  // Other calendars to check for conflicts, WITHOUT ever creating events
+  // on them — e.g. a second calendar you use to block off time (work,
+  // another commitment, etc.). A slot is only offered if it's free on
+  // calendarId AND every calendar listed here. Leave as [] if you only
+  // have one calendar.
+  //
+  // Each entry needs to be shared with whichever Google account runs
+  // this script (Project Settings → your account, or the "Execute as"
+  // account from the deployment) with at least "See all event details"
+  // permission, or getCalendarById() won't be able to read it.
+  additionalBusyCalendarIds: [
+    // 'your.second.calendar@group.calendar.google.com'
+  ],
 
   // Opening hours per weekday. 0 = Sunday ... 6 = Saturday, matching JS Date#getDay().
   // Empty array = closed that day. Ranges are "HH:MM-HH:MM", 24h format.
@@ -176,17 +191,40 @@ function partsToDate(dateStr, timeStr) {
   return new Date(d[0], d[1] - 1, d[2], t[0], t[1], 0, 0);
 }
 
-function getCalendar() {
-  return CONFIG.calendarId
-    ? CalendarApp.getCalendarById(CONFIG.calendarId)
-    : CalendarApp.getDefaultCalendar();
+// The single calendar new bookings are actually created on.
+function getBookingCalendar() {
+  return resolveCalendarById(CONFIG.calendarId);
 }
 
+function resolveCalendarById(id) {
+  return id ? CalendarApp.getCalendarById(id) : CalendarApp.getDefaultCalendar();
+}
+
+// Busy intervals across the booking calendar AND every calendar listed in
+// additionalBusyCalendarIds — a slot only counts as free if it's free on
+// all of them. Any calendar ID that can't be resolved (typo, not shared
+// with this script's account, etc.) is skipped rather than crashing the
+// whole request, so one bad ID doesn't take slot-checking down entirely.
 function getBusyIntervals(rangeStart, rangeEnd) {
-  var events = getCalendar().getEvents(rangeStart, rangeEnd);
-  return events.map(function (ev) {
-    return { start: ev.getStartTime(), end: ev.getEndTime() };
+  var ids = [CONFIG.calendarId].concat(CONFIG.additionalBusyCalendarIds || []);
+  var intervals = [];
+
+  ids.forEach(function (id) {
+    var cal;
+    try {
+      cal = resolveCalendarById(id);
+    } catch (err) {
+      cal = null;
+    }
+    if (!cal) return;
+
+    var events = cal.getEvents(rangeStart, rangeEnd);
+    events.forEach(function (ev) {
+      intervals.push({ start: ev.getStartTime(), end: ev.getEndTime() });
+    });
   });
+
+  return intervals;
 }
 
 function overlapsAny(start, end, busyIntervals) {
@@ -254,7 +292,9 @@ function createBooking(body) {
     if (body.phone) descriptionLines.push('Phone: ' + body.phone);
     if (body.note) descriptionLines.push('Note: ' + body.note);
 
-    getCalendar().createEvent(title, start, end, {
+    // The actual event only ever goes on the one booking calendar — the
+    // additionalBusyCalendarIds ones were only consulted for conflicts.
+    getBookingCalendar().createEvent(title, start, end, {
       description: descriptionLines.join('\n'),
       guests: body.email,
       sendInvite: true // Google Calendar emails the guest a confirmation + .ics automatically
