@@ -237,6 +237,16 @@
     100% { opacity: 1; transform: rotate(-8deg) scale(1); }
   }
 
+  .sticker.alt {
+    transform: rotate(7deg);
+    animation-name: stickerPopAlt;
+  }
+
+  @keyframes stickerPopAlt {
+    0%   { opacity: 0; transform: rotate(7deg) scale(0.4); }
+    100% { opacity: 1; transform: rotate(7deg) scale(1); }
+  }
+
   .continue-btn {
     margin-top: 40px;
     background: transparent;
@@ -474,7 +484,7 @@
 <!-- Screen 2: she said yes, prompt to continue -->
 <div class="screen" id="burst">
   <img class="sticker" src="yeah_dog.webp" alt="">
-  <h2>Wohoo! 🎉 <br> Look at that, main character behavior. </h2>
+  <h2>Wohoo! Look at that, main character behavior. 🎉</h2>
   <p class="tag">That took embarrassingly long, but okay</p>
   <button class="continue-btn" id="continueBtn">what are we eating? →</button>
 </div>
@@ -516,6 +526,7 @@
 
 <!-- Screen 5: final confirmation -->
 <div class="screen" id="finalMsg">
+  <img class="sticker alt" src="excited.webp" alt="">
   <div class="eyebrow">it's a date</div>
   <h2 id="finalTitle">Counting down already</h2>
   <p class="tag" id="finalSub">I'll find us somewhere good. See you soon 💛</p>
